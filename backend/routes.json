@@ -1,0 +1,13 @@
+[
+  {
+    "route_id": "108bcecb-696e-4631-826f-ddfe9394a00f",
+    "route_name": "Main Campus Route",
+    "route_code": "R1",
+    "total_distance_km": null,
+    "estimated_duration_min": null,
+    "departure_time": null,
+    "return_time": null,
+    "is_active": true,
+    "created_at": "2026-03-07T05:10:06.514Z"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "stop_id": "0346afa3-f0f5-42f1-bbef-a7f5a52c3da5",
+    "route_id": "108bcecb-696e-4631-826f-ddfe9394a00f",
+    "stop_name": "Library",
+    "latitude": "13.085000",
+    "longitude": "80.272000",
+    "stop_order": 1,
+    "estimated_arrival_time": null,
+    "created_at": "2026-03-07T05:10:06.709Z"
+  }
+]

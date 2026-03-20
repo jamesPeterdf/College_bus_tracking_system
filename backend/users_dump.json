@@ -1,0 +1,39 @@
+{
+  "students": [
+    {
+      "student_id": "01dc2cd2-b10f-4709-9462-492eb37ce1e3",
+      "roll_number": "STU001",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone": "9876543210",
+      "parent_phone": "9876543211",
+      "parent_email": null,
+      "parent_whatsapp": null,
+      "department": null,
+      "semester": null,
+      "year": null,
+      "route_id": "108bcecb-696e-4631-826f-ddfe9394a00f",
+      "stop_id": "0346afa3-f0f5-42f1-bbef-a7f5a52c3da5",
+      "profile_photo": null,
+      "password_hash": "$2b$10$E/HMzZTyTxpvbuAa.c0fIuuePTorS8mmJlU0XO1axC9mDPNOFgGhG",
+      "is_active": true,
+      "created_at": "2026-03-07T05:10:07.323Z"
+    }
+  ],
+  "drivers": [
+    {
+      "driver_id": "c49a27c7-27f5-4e16-b314-4149a6b28baa",
+      "driver_code": "DRV001",
+      "name": "Mike Wheeler",
+      "phone": "9988776655",
+      "license_number": "LIC001",
+      "bus_id": null,
+      "password_hash": "$2b$10$E/HMzZTyTxpvbuAa.c0fIuuePTorS8mmJlU0XO1axC9mDPNOFgGhG",
+      "is_active": true,
+      "current_latitude": null,
+      "current_longitude": null,
+      "last_location_update": null,
+      "created_at": "2026-03-07T05:10:06.912Z"
+    }
+  ]
+}
