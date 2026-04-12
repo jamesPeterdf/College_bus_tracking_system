@@ -103,6 +103,9 @@ const AdminDashboard = () => {
         navigate('/login', { replace: true });
     };
 
+    const [history, setHistory] = useState([]);
+    const [selectedDriver, setSelectedDriver] = useState(null);
+
     const load = useCallback(async () => {
         setLoading(true);
         try {
@@ -126,6 +129,13 @@ const AdminDashboard = () => {
             toast.error('Some data failed to load');
         } finally { setLoading(false); }
     }, []);
+
+    const loadDriverHistory = async (driverId) => {
+        try {
+            const res = await api.get(`/admin/drivers/${driverId}/history`);
+            setHistory(res.data);
+        } catch (err) { toast.error('Failed to load history'); }
+    };
 
     const loadStops = useCallback(async (route_id) => {
         const res = await api.get(`/admin/stops${route_id ? `?route_id=${route_id}` : ''}`);
@@ -379,6 +389,12 @@ const AdminDashboard = () => {
                                 <TD><Badge active={d.is_active} /></TD>
                                 <td className="py-3 px-4">
                                     <div className="flex gap-2">
+                                        <button onClick={()=>{setModal('driverReport');setSelectedDriver(d);setForm({remark:''});}}
+                                            title="Add Remark"
+                                            className="p-1.5 text-slate-500 hover:text-orange-400 transition-colors"><MessageSquare size={13}/></button>
+                                        <button onClick={()=>{setModal('driverHistory');setSelectedDriver(d);loadDriverHistory(d.id);}}
+                                            title="View History"
+                                            className="p-1.5 text-slate-500 hover:text-blue-400 transition-colors"><RefreshCcw size={13}/></button>
                                         <button onClick={()=>{setModal('editDriver');setForm({...d,id:d.id});}}
                                             className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"><Edit2 size={13}/></button>
                                         <button onClick={()=>resetPassword(`/admin/drivers/${d.id}/reset-password`, d.name)}
@@ -935,6 +951,37 @@ const AdminDashboard = () => {
                                 <Field label="ETA" placeholder="07:30 AM" value={form.estimated_arrival_time||''} onChange={e=>setF('estimated_arrival_time',e.target.value)} />
                             </div>
                             <SaveBtn loading={saving} label="ADD STOP" onClick={()=>submit('/admin/stops')} />
+                        </div>
+                    </Modal>
+                )}
+                {modal === 'driverReport' && (
+                    <Modal title={`REPORT: ${selectedDriver?.name}`} onClose={closeModal}>
+                        <div className="space-y-4">
+                            <textarea rows="4" className="w-full bg-black border border-slate-700 rounded p-3 text-sm text-white" placeholder="Enter driver remark/incident report..." 
+                                value={form.remark||''} onChange={e=>setF('remark', e.target.value)}></textarea>
+                            <SaveBtn loading={saving} onClick={()=>submit(`/admin/drivers/${selectedDriver.id}/history`)} />
+                        </div>
+                    </Modal>
+                )}
+
+                {modal === 'driverHistory' && (
+                    <Modal title={`HISTORY: ${selectedDriver?.name}`} onClose={closeModal}>
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                            {history.map(h => (
+                                <div key={h.id} className="p-3 bg-slate-900 border border-slate-700/50 rounded">
+                                    <p className="text-xs text-slate-300">{h.remark}</p>
+                                    <div className="flex justify-between items-center mt-2">
+                                        <span className="text-[9px] text-cyan-500 font-bold uppercase">{new Date(h.created_at).toLocaleString()}</span>
+                                        {h.tx_hash && (
+                                            <a href={`https://sepolia.basescan.org/tx/${h.tx_hash}`} target="_blank" rel="noopener noreferrer" 
+                                                className="text-[9px] text-orange-400 font-bold uppercase underline hover:text-orange-300 transition-colors">
+                                                Verified Proof
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {history.length === 0 && <p className="text-center text-slate-600 py-4 text-xs">No history found.</p>}
                         </div>
                     </Modal>
                 )}
