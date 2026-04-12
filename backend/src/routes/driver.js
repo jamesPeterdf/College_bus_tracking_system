@@ -115,12 +115,24 @@ router.post('/attendance/mark', auth(['driver']), async (req, res) => {
         if (!routeId) return res.status(400).json({ error: 'No active route' });
 
         const today = new Date().toISOString().split('T')[0];
-        await db.query(`
-            INSERT INTO Attendance (student_id, route_id, date, status, verification_method)
-            VALUES ($1, $2, $3, $4, 'Driver Manual')
-            ON CONFLICT (student_id, date)
-            DO UPDATE SET status=EXCLUDED.status, verification_method='Driver Manual Override'
-        `, [student_id, routeId, today, status || 'Present']);
+
+        // Manual Upsert since there's no unique constraint on (student_id, date)
+        const existing = await db.query(
+            'SELECT attendance_id FROM Attendance WHERE student_id=$1 AND date=$2',
+            [student_id, today]
+        );
+
+        if (existing.rows.length > 0) {
+            await db.query(`
+                UPDATE Attendance SET status=$1, verification_method='Driver Manual Override'
+                WHERE attendance_id=$2
+            `, [status || 'Present', existing.rows[0].attendance_id]);
+        } else {
+            await db.query(`
+                INSERT INTO Attendance (student_id, driver_id, route_id, date, status, verification_method)
+                VALUES ($1, $2, $3, $4, $5, 'Driver Manual')
+            `, [student_id, req.user.id, routeId, today, status || 'Present']);
+        }
 
         res.json({ success: true });
     } catch (err) {

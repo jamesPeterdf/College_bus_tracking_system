@@ -1,1 +1,42 @@
-.vercel
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+reset_db_log.txt
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# Vercel
+.vercel/
+
+# Dump and credential txt files
+creds.txt
+creds_output.txt
+drv_creds.txt
+hash.txt
+stu_hash.txt
+db-setup-output.txt
+schema_output.txt
+
+# Dump and test json files
+db_out.json
+types_out.json
+users_dump.json
+
+# Exclude all .txt files globally just to be safe
+*.txt
+
+# OS files
+.DS_Store
+Thumbs.db

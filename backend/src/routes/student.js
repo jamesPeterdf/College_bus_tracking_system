@@ -154,9 +154,9 @@ router.get('/route/timeline', auth(['student']), async (req, res) => {
     }
 });
 
-// POST /api/student/report (anomaly report)
+// POST /api/student/report (anomaly/complaint report)
 router.post('/report', auth(['student']), async (req, res) => {
-    const { description } = req.body;
+    const { type, severity, description } = req.body;
     try {
         const busRes = await db.query(`
             SELECT b.bus_id FROM Buses b
@@ -169,8 +169,8 @@ router.post('/report', auth(['student']), async (req, res) => {
 
         await db.query(`
             INSERT INTO Alerts (bus_id, type, severity, description, status)
-            VALUES ($1, 'Student Report', 'Low', $2, 'Active')
-        `, [busId, description]);
+            VALUES ($1, $2, $3, $4, 'Active')
+        `, [busId, type || 'Student Report', severity || 'Low', description]);
 
         res.json({ success: true, message: 'Report submitted.' });
     } catch (err) {

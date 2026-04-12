@@ -13,7 +13,8 @@ const DriverDashboard = () => {
     const navigate = useNavigate();
 
     // Live driver location state
-    const [currentLoc, setCurrentLoc] = useState({ lat: 13.1354, lng: 80.0453, heading: 90 });
+    // Starting coordinates set slightly away from the college so a route line can be drawn initially
+    const [currentLoc, setCurrentLoc] = useState({ lat: 13.1154, lng: 80.0653, heading: 90 });
     const [gpsError, setGpsError] = useState(null);
     const [students, setStudents] = useState([]);
     const [routeId, setRouteId] = useState('7B'); // Fallback
@@ -290,7 +291,14 @@ const DriverDashboard = () => {
                             <div className="h-96 glass p-[2px] rounded border border-cyan-500/20 relative overflow-hidden shadow-[0_0_20px_rgba(14,165,233,0.1)]">
                                 <div className="absolute inset-0 bg-cyan-500/5 blur-[20px] pointer-events-none"></div>
                                 <div className="w-full h-full rounded overflow-hidden">
-                                    <CobusMap busLocation={currentLoc} />
+                                    <CobusMap 
+                                        busLocation={currentLoc} 
+                                        targetStop={{ 
+                                            lat: 13.1354, 
+                                            lng: 80.0453, 
+                                            stop_name: 'Jaya Engineering College' 
+                                        }} 
+                                    />
                                 </div>
                             </div>
 

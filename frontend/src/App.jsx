@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
@@ -6,8 +6,11 @@ import StudentDashboard from './pages/StudentDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import IntroAnimation from './components/IntroAnimation';
 
 function App() {
+    const [showIntro, setShowIntro] = useState(true);
+
     return (
         <Router>
             <div className="min-h-screen relative overflow-hidden">
@@ -27,34 +30,38 @@ function App() {
                             error: { className: 'glass !bg-[#050B14] !text-red-400 !border !border-red-500/50 !shadow-[0_0_15px_rgba(239,68,68,0.2)] !rounded-sm tracking-widest text-xs uppercase font-bold', iconTheme: { primary: '#ef4444', secondary: '#050B14' } }
                         }}
                     />
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route
-                            path="/student/*"
-                            element={
-                                <ProtectedRoute allowedRoles={['student']}>
-                                    <StudentDashboard />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/driver/*"
-                            element={
-                                <ProtectedRoute allowedRoles={['driver']}>
-                                    <DriverDashboard />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/admin/*"
-                            element={
-                                <ProtectedRoute allowedRoles={['admin']}>
-                                    <AdminDashboard />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route path="/" element={<Navigate to="/login" replace />} />
-                    </Routes>
+                    {showIntro ? (
+                        <IntroAnimation onComplete={() => setShowIntro(false)} />
+                    ) : (
+                        <Routes>
+                            <Route path="/login" element={<Login />} />
+                            <Route
+                                path="/student/*"
+                                element={
+                                    <ProtectedRoute allowedRoles={['student']}>
+                                        <StudentDashboard />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/driver/*"
+                                element={
+                                    <ProtectedRoute allowedRoles={['driver']}>
+                                        <DriverDashboard />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/*"
+                                element={
+                                    <ProtectedRoute allowedRoles={['admin']}>
+                                        <AdminDashboard />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route path="/" element={<Navigate to="/login" replace />} />
+                        </Routes>
+                    )}
                 </div>
             </div>
         </Router>

@@ -90,7 +90,7 @@ const CobusMap = ({ markers = [], stops = [], busLocation = null, targetStop = n
     // Fetch road route from OSRM
     useEffect(() => {
         const fetchRoute = async () => {
-            if (!busLocation || stops.length === 0) return;
+            if (!busLocation || (!targetStop && (!stops || stops.length === 0))) return;
 
             // Prefer explicitly defined target stop over the generalized list
             const destStop = targetStop || stops[0];

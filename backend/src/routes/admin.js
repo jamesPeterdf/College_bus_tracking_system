@@ -79,6 +79,20 @@ router.put('/students/:id/status', auth(['admin']), async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.put('/students/:id/reset-password', auth(['admin']), async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        if (!newPassword) return res.status(400).json({ error: 'New password is required' });
+        
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db.query(
+            'UPDATE Students SET password_hash=$1 WHERE student_id=$2',
+            [hashedPassword, req.params.id]
+        );
+        res.json({ message: 'Password updated successfully' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.delete('/students/:id', auth(['admin']), async (req, res) => {
     try {
         await db.query('DELETE FROM Attendance WHERE student_id=$1', [req.params.id]);
@@ -136,6 +150,20 @@ router.put('/drivers/:id/status', auth(['admin']), async (req, res) => {
             [req.params.id]
         );
         res.json({ is_active: result.rows[0]?.is_active });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/drivers/:id/reset-password', auth(['admin']), async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        if (!newPassword) return res.status(400).json({ error: 'New password is required' });
+        
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db.query(
+            'UPDATE Drivers SET password_hash=$1 WHERE driver_id=$2',
+            [hashedPassword, req.params.id]
+        );
+        res.json({ message: 'Password updated successfully' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -295,6 +323,34 @@ router.get('/attendance', auth(['admin']), async (req, res) => {
             ORDER BY r.route_code, s.name
         `, [date]);
         res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ════════════════════════════════════════════════════════════
+// COMMUNICATIONS (Newsletters)
+// ════════════════════════════════════════════════════════════
+router.get('/communications', auth(['admin']), async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT notification_id as id, title, message, sent_at
+            FROM Notifications
+            WHERE recipient_type IN ('parent', 'all')
+            ORDER BY sent_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/communications', auth(['admin']), async (req, res) => {
+    try {
+        const { title, message } = req.body;
+        const result = await db.query(`
+            INSERT INTO Notifications (recipient_type, recipient_id, type, title, message, channel)
+            VALUES ('all', $1, 'Newsletter', $2, $3, 'app')
+            RETURNING notification_id
+        `, [req.user.id || '00000000-0000-0000-0000-000000000000', title, message]);
+        // Broadcasting this to all clients for real-time update could be done here if needed
+        res.status(201).json({ message: 'Newsletter sent successfully.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

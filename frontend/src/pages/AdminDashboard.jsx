@@ -5,7 +5,7 @@ import {
     LayoutDashboard, Truck, Users, Route as RouteIcon, LogOut,
     Plus, Trash2, X, Edit2, Check, AlertTriangle, Bell,
     Map, UserCheck, Bus, MapPin, Shield, RefreshCcw,
-    ToggleLeft, ToggleRight, ChevronDown, Search
+    ToggleLeft, ToggleRight, ChevronDown, Search, MessageSquare, Sparkles, Key
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import CobusMap from '../components/CobusMap';
@@ -87,6 +87,8 @@ const AdminDashboard = () => {
     const [stops,      setStops]      = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [alerts,     setAlerts]     = useState([]);
+    const [communications, setCommunications] = useState([]);
+    const [aiPrompt, setAiPrompt] = useState("");
 
     // Modal state
     const [modal, setModal] = useState(null); // 'student' | 'driver' | 'bus' | 'route' | 'stop' | 'editStudent' | 'editDriver' | 'editBus'
@@ -104,13 +106,14 @@ const AdminDashboard = () => {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [s, st, dr, bu, ro, al] = await Promise.all([
+            const [s, st, dr, bu, ro, al, comms] = await Promise.all([
                 api.get('/admin/dashboard/stats'),
                 api.get('/admin/students'),
                 api.get('/admin/drivers'),
                 api.get('/admin/buses'),
                 api.get('/admin/routes'),
                 api.get('/admin/alerts'),
+                api.get('/admin/communications'),
             ]);
             setStats(s.data);
             setStudents(st.data);
@@ -118,6 +121,7 @@ const AdminDashboard = () => {
             setBuses(bu.data);
             setRoutes(ro.data);
             setAlerts(al.data);
+            setCommunications(comms.data);
         } catch (err) {
             toast.error('Some data failed to load');
         } finally { setLoading(false); }
@@ -144,8 +148,14 @@ const AdminDashboard = () => {
     const submit = async (endpoint, method = 'post') => {
         setSaving(true);
         try {
-            await api[method](endpoint, form);
+            const res = await api[method](endpoint, form);
             toast.success('OPERATION SUCCESSFUL');
+            
+            if (res.data?.password) {
+                const idLabel = res.data.roll_number || res.data.driver_code || 'ID';
+                window.alert(`=== CREDENTIALS GENERATED ===\n\nLogin ID: ${form.roll_number || form.driver_code || form.email}\nPassword: ${res.data.password}\n\nPlease copy this now. It will not be shown again.`);
+            }
+
             closeModal();
             load(); loadStops();
         } catch (err) {
@@ -162,12 +172,46 @@ const AdminDashboard = () => {
         } catch (err) { toast.error(err.response?.data?.error || 'DELETE FAILED'); }
     };
 
+    const resetPassword = async (endpoint, targetName) => {
+        const newPassword = window.prompt(`Enter new password for ${targetName}:`);
+        if (!newPassword) return;
+        if (newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+        
+        try {
+            await api.put(endpoint, { newPassword });
+            toast.success('PASSWORD UPDATED successfully');
+            window.alert(`=== NEW CREDENTIALS ===\n\nUser: ${targetName}\nNew Password: ${newPassword}\n\nPlease share this securely.`);
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'FAILED TO RESET PASSWORD');
+        }
+    };
+
     const toggle = async (endpoint) => {
         try {
             await api.put(endpoint);
             toast.success('STATUS UPDATED');
             load();
         } catch (err) { toast.error('TOGGLE FAILED'); }
+    };
+
+    const optimizeRoute = async (routeId, routeName) => {
+        if (!window.confirm(`Use AI to recalculate the optimal shortest driving path for ${routeName}?`)) return;
+        setLoading(true);
+        try {
+            const res = await api.post('/ai/optimize-route', { route_id: routeId });
+            if (res.data.message) {
+                toast.error(res.data.message);
+                return;
+            }
+            toast.success(`AI OPTIMIZED: ${res.data.optimizedCount || 'All'} stops reordered`);
+            loadStops(routeId);
+            setActiveTab('stops');
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.response?.data?.message || 'OPTIMIZATION FAILED');
+        } finally { setLoading(false); }
     };
 
     // ── Sidebar tabs ─────────────────────────────────────────────────────────
@@ -180,6 +224,7 @@ const AdminDashboard = () => {
         { id: 'routes',     label: 'ROUTES',       icon: RouteIcon },
         { id: 'stops',      label: 'STOPS',        icon: MapPin },
         { id: 'attendance', label: 'ATTENDANCE',   icon: UserCheck },
+        { id: 'communications', label: 'COMMS',    icon: MessageSquare },
         { id: 'alerts',     label: 'ALERTS',       icon: AlertTriangle },
         { id: 'settings',   label: 'COMMAND',      icon: Shield },
     ];
@@ -283,11 +328,16 @@ const AdminDashboard = () => {
                                     <div className="flex gap-2">
                                         <button onClick={()=>{setModal('editStudent');setForm({...s, id:s.id});}}
                                             className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"><Edit2 size={13}/></button>
+                                        <button onClick={()=>resetPassword(`/admin/students/${s.id}/reset-password`, s.name)}
+                                            title="Reset Password"
+                                            className="p-1.5 text-slate-500 hover:text-purple-400 transition-colors"><Key size={13}/></button>
                                         <button onClick={()=>toggle(`/admin/students/${s.id}/status`)}
+                                            title="Toggle Status"
                                             className="p-1.5 text-slate-500 hover:text-yellow-400 transition-colors">
                                             {s.status==='Active'?<ToggleRight size={13}/>:<ToggleLeft size={13}/>}
                                         </button>
                                         <button onClick={()=>del(`/admin/students/${s.id}`, `Delete student ${s.name}?`)}
+                                            title="Delete"
                                             className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                                     </div>
                                 </td>
@@ -331,11 +381,16 @@ const AdminDashboard = () => {
                                     <div className="flex gap-2">
                                         <button onClick={()=>{setModal('editDriver');setForm({...d,id:d.id});}}
                                             className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"><Edit2 size={13}/></button>
+                                        <button onClick={()=>resetPassword(`/admin/drivers/${d.id}/reset-password`, d.name)}
+                                            title="Reset Password"
+                                            className="p-1.5 text-slate-500 hover:text-purple-400 transition-colors"><Key size={13}/></button>
                                         <button onClick={()=>toggle(`/admin/drivers/${d.id}/status`)}
+                                            title="Toggle Status"
                                             className="p-1.5 text-slate-500 hover:text-yellow-400 transition-colors">
                                             {d.is_active?<ToggleRight size={13}/>:<ToggleLeft size={13}/>}
                                         </button>
                                         <button onClick={()=>del(`/admin/drivers/${d.id}`, `Delete driver ${d.name}?`)}
+                                            title="Delete"
                                             className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                                     </div>
                                 </td>
@@ -421,6 +476,11 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            <motion.button whileHover={{scale:1.05}} whileTap={{scale:0.95}}
+                                onClick={() => optimizeRoute(r.id, r.name)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-black text-orange-400 bg-orange-500/10 border border-orange-500/50 rounded hover:bg-orange-500 hover:text-black transition-all shadow-[0_0_15px_rgba(249,115,22,0.2)] tracking-widest">
+                                🤖 OPTIMIZE (AI)
+                            </motion.button>
                             <motion.button whileHover={{scale:1.05}} whileTap={{scale:0.95}}
                                 onClick={()=>{setActiveTab('stops'); loadStops(r.id); setSearch(r.code);}}
                                 className="px-3 py-1.5 text-[10px] font-bold text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-500/10 transition-colors tracking-widest">
@@ -616,6 +676,69 @@ const AdminDashboard = () => {
         </div>
     );
 
+    const generateAINewsletter = async () => {
+        if (!aiPrompt) return toast.error("Please enter a topic first.");
+        setLoading(true);
+        try {
+            const res = await api.post('/ai/generate-newsletter', { prompt: aiPrompt });
+            setForm(prev => ({ ...prev, message: res.data.reply }));
+            toast.success("AI Generated successfully");
+        } catch (err) {
+            toast.error("AI Generation failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderCommunications = () => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+                <h3 className="text-sm font-black text-cyan-400 uppercase tracking-widest">Compose Newsletter</h3>
+                <div className="glass p-5 border border-slate-700/50 space-y-4">
+                    <Field label="Title" placeholder="e.g. Schedule Change" value={form.title||''} onChange={e=>setF('title',e.target.value)} />
+                    
+                    <div>
+                        <label className="flex justify-between text-[10px] font-bold text-cyan-500 tracking-widest uppercase mb-1">
+                            Message
+                            <span className="text-blue-400 cursor-pointer hover:text-blue-300" onClick={() => setAiPrompt(window.prompt("What should the newsletter be about?") || "")}>
+                                Need ideas? ✨
+                            </span>
+                        </label>
+                        {aiPrompt && (
+                            <div className="flex gap-2 mb-2">
+                                <input className="flex-1 bg-slate-900/80 border border-slate-700 rounded px-2 py-1 text-xs text-white" value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} />
+                                <button onClick={generateAINewsletter} className="bg-blue-500/20 text-blue-400 border border-blue-500/50 rounded px-3 py-1 text-[10px] uppercase font-bold tracking-widest hover:bg-blue-500/40 transition">
+                                    {loading ? '...' : 'Auto-Generate'}
+                                </button>
+                            </div>
+                        )}
+                        <textarea rows="6" className="w-full bg-slate-900/80 border border-slate-700 rounded px-3 py-2.5 text-white text-sm focus:border-cyan-400 outline-none transition-colors" value={form.message||''} onChange={e=>setF('message',e.target.value)} placeholder="Type newsletter body here..."></textarea>
+                    </div>
+                    
+                    <SaveBtn loading={saving} label="BROADCAST TO ALL PARENTS" onClick={()=> {
+                        if (!form.title || !form.message) return toast.error("Title and message required");
+                        submit('/admin/communications')
+                    }} />
+                </div>
+            </div>
+            <div className="space-y-4">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Recent Broadcasts</h3>
+                <div className="space-y-3">
+                    {communications.map(c => (
+                        <div key={c.id} className="glass p-4 border border-slate-700/50">
+                            <h4 className="font-bold text-white text-sm">{c.title}</h4>
+                            <p className="text-xs text-slate-400 mt-1 whitespace-pre-wrap">{c.message}</p>
+                            <div className="mt-3 text-[9px] text-cyan-500 font-bold uppercase tracking-widest">
+                                Sent: {new Date(c.sent_at).toLocaleString()}
+                            </div>
+                        </div>
+                    ))}
+                    {communications.length === 0 && <p className="text-xs text-slate-600">No previous broadcasts.</p>}
+                </div>
+            </div>
+        </div>
+    );
+
     const tabContent = {
         dashboard: renderDashboard(),
         fleet:     renderFleet(),
@@ -625,6 +748,7 @@ const AdminDashboard = () => {
         routes:    renderRoutes(),
         stops:     renderStops(),
         attendance:renderAttendance(),
+        communications: renderCommunications(),
         alerts:    renderAlerts(),
         settings:  renderSettings(),
     };
