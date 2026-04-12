@@ -1,35 +1,12 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
-let pool;
-try {
-    pool = new Pool({
-        user:     process.env.DB_USER,
-        host:     process.env.DB_HOST,
-        database: process.env.DB_NAME,
-        password: process.env.DB_PASSWORD,
-        port:     parseInt(process.env.DB_PORT) || 5432,
-        ssl:      { rejectUnauthorized: false }, // Supabase requires SSL
-        // Connection pool tuning for Supabase
-        max:                 10,
-        idleTimeoutMillis:   30000,
-        connectionTimeoutMillis: 5000,
-    });
+const supabaseUrl = process.env.PROJECT_URL;
+const supabaseKey = process.env.SERVICE_ROLE;
 
-    pool.on('error', (err) => console.error('Unexpected DB client error:', err.message));
-    console.log('DB Pool initialized → Supabase');
-} catch (err) {
-    console.error('DB Pool Initialization Failed:', err.message);
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase credentials missing.');
 }
 
-module.exports = {
-    query: async (text, params) => {
-        try {
-            return await pool.query(text, params);
-        } catch (err) {
-            console.error('DB Query Error:', err.message, '| Query:', text.slice(0, 80));
-            return { rows: [], rowCount: 0 };
-        }
-    },
-    pool,
-};
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+module.exports = supabase;
