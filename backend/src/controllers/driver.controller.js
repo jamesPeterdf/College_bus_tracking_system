@@ -49,18 +49,29 @@ exports.getRouteStudents = async (req, res) => {
     } catch (err) { res.status(500).json({ error: 'Failed to fetch students' }); }
 };
 
+const { sendAttendanceEmail } = require('../services/mailService');
+
 exports.markAttendance = async (req, res) => {
     const { student_id, status } = req.body;
     try {
         const { data: bus } = await db.from('buses').select('route_id').eq('driver_id', req.user.id).eq('is_active', true).single();
         if (!bus?.route_id) return res.status(400).json({ error: 'No active route' });
         const today = new Date().toISOString().split('T')[0];
+        
+        const { data: student } = await db.from('students').select('name, email').eq('student_id', student_id).single();
+        
         const { data: existing } = await db.from('attendance').select('attendance_id').eq('student_id', student_id).eq('date', today).single();
         if (existing) {
             await db.from('attendance').update({ status: status || 'Present', verification_method: 'Driver Override' }).eq('attendance_id', existing.attendance_id);
         } else {
             await db.from('attendance').insert([{ student_id, driver_id: req.user.id, route_id: bus.route_id, date: today, status: status || 'Present', verification_method: 'Driver Manual' }]);
         }
+
+        // Send Email Notification in background
+        if (student?.email) {
+            sendAttendanceEmail(student.email, student.name, status || 'Present', today).catch(e => console.error("Email fail:", e));
+        }
+
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Failed to mark attendance' }); }
 };

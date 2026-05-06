@@ -7,6 +7,7 @@ require('dotenv').config();
 const validateEnv = require('./config/envValidator');
 const errorHandler = require('./middleware/errorHandler');
 const db = require('./config/db');
+const { checkProximity } = require('./services/proximityService');
 
 validateEnv();
 
@@ -64,9 +65,13 @@ io.on('connection', (socket) => {
         socket.join('admin_room');
     });
 
+
     socket.on('driver_location_update', async (data, callback) => {
         socket.broadcast.to(`route_${data.route_id}`).emit('location_update', data);
         socket.broadcast.to('admin_room').emit('global_location_update', data);
+        
+        // Check proximity for notifications
+        checkProximity(io, data.route_id, data.lat, data.lng);
         
         let success = false;
         try {

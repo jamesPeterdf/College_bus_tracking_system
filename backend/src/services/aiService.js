@@ -18,7 +18,7 @@ const getChatResponse = async (userId, userRole, message) => {
         }
     }
     const response = await groq.chat.completions.create({
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [
             {
                 role: "system",
@@ -32,33 +32,63 @@ const getChatResponse = async (userId, userRole, message) => {
 
 const optimizeRouteWithAI = async (routeId) => {
     const { data: stops } = await db.from('stops').select('stop_id, stop_name, latitude, longitude').eq('route_id', routeId).order('stop_order');
-    if (stops.length <= 2) return { message: 'Too few stops' };
+    if (stops.length <= 2) return { message: 'Too few stops to optimize.' };
+
+    const prompt = `
+    You are a logistics optimization agent.
+    Given the following bus stops for a college route, find the most efficient shortest path.
+    Consider the latitude and longitude coordinates.
+    
+    STOPS:
+    ${JSON.stringify(stops)}
+
+    Return your response in the following JSON format:
+    {
+        "optimalOrder": ["stop_id1", "stop_id2", ...],
+        "findings": "A brief explanation of why this path was chosen and the estimated efficiency improvement."
+    }
+    
+    Return ONLY the JSON. No markdown.
+    `;
+
     const response = await groq.chat.completions.create({
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [
             {
                 role: "system",
-                content: `Return ONLY a valid JSON array of 'stop_id' strings in optimal order. No markdown.`
+                content: "You are a logistics expert agent. You find the shortest path between coordinates."
             },
-            { role: "user", content: JSON.stringify(stops) }
+            { role: "user", content: prompt }
         ],
     });
+
     try {
         let content = response.choices[0].message.content.trim();
         if (content.startsWith('```json')) content = content.replace(/```json/g, '').replace(/```/g, '').trim();
         else if (content.startsWith('```')) content = content.replace(/```/g, '').trim();
-        const optimalOrderIds = JSON.parse(content);
+        
+        const result = JSON.parse(content);
+        const optimalOrderIds = result.optimalOrder;
+        
         for (let i = 0; i < optimalOrderIds.length; i++) {
             await db.from('stops').update({ stop_order: i + 1 }).eq('stop_id', optimalOrderIds[i]).eq('route_id', routeId);
         }
-        return { success: true, optimizedCount: optimalOrderIds.length };
-    } catch (err) { throw new Error("AI routing failure"); }
+        
+        return { 
+            success: true, 
+            optimizedCount: optimalOrderIds.length, 
+            findings: result.findings 
+        };
+    } catch (err) { 
+        console.error("AI Routing Error:", err);
+        throw new Error("AI routing failure: " + err.message); 
+    }
 };
 
 const generateNewsletterWithAI = async (prompt) => {
     try {
         const response = await groq.chat.completions.create({
-            model: "llama3-70b-8192",
+            model: "llama-3.3-70b-versatile",
             messages: [
                 {
                     role: "system",

@@ -41,7 +41,7 @@ const StudentDashboard = () => {
     }, []);
 
     // Live tracking state from socket dynamically bound to route
-    const { busLocation: liveBusLocation, connectionStatus } = useBusTracking(routeId);
+    const { busLocation: liveBusLocation, connectionStatus, latestNotification } = useBusTracking(routeId);
 
     // Fallback if no location data is received yet
     const busLocation = liveBusLocation || { lat: 13.1354, lng: 80.0453, heading: 45 };
@@ -55,12 +55,23 @@ const StudentDashboard = () => {
     const [studentLiveLoc, setStudentLiveLoc] = useState(null);
     const [gpsError, setGpsError] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState([
-        { id: 1, text: 'Bus is 2 stops away', time: '2 min ago', read: false },
-        { id: 2, text: 'Driver has started the route', time: '18 min ago', read: false },
-        { id: 3, text: 'Route 7B is on schedule', time: '1 hr ago', read: true },
-    ]);
+    const [notifications, setNotifications] = useState([]);
     const notifRef = useRef(null);
+
+    // Append live notifications
+    useEffect(() => {
+        if (latestNotification) {
+            setNotifications(prev => [
+                {
+                    id: Date.now(),
+                    text: latestNotification.message,
+                    time: 'Just now',
+                    read: false
+                },
+                ...prev
+            ]);
+        }
+    }, [latestNotification]);
 
     const [showReportModal, setShowReportModal] = useState(false);
     const [reportForm, setReportForm] = useState({ type: 'Rash Driving', severity: 'High', description: '' });

@@ -6,6 +6,7 @@ export const useBusTracking = (routeId) => {
     const [busLocation, setBusLocation] = useState(null);
     const [connectionStatus, setConnectionStatus] = useState('disconnected');
     const [arrivalPing, setArrivalPing] = useState(null);
+    const [latestNotification, setLatestNotification] = useState(null);
 
     useEffect(() => {
         if (!routeId) {
@@ -43,14 +44,24 @@ export const useBusTracking = (routeId) => {
             toast.success(`📡 ${data.message}`, { duration: 6000 });
         });
 
+        // Listen for proximity notifications
+        socket.on('notification', (data) => {
+            console.log("useBusTracking: Notification received:", data);
+            toast.success(`🚌 ${data.message}`, { duration: 6000, position: 'top-center' });
+            // We can also trigger a custom event or callback here if needed
+            // But for now, the toast and returning the data is enough
+            setLatestNotification(data);
+        });
+
         return () => {
             socket.off('location_update');
             socket.off('arrival_ping');
+            socket.off('notification');
             socket.off('connect');
             socket.off('disconnect');
             socket.io.off('reconnect_attempt');
         };
     }, [routeId]);
 
-    return { busLocation, connectionStatus, arrivalPing };
+    return { busLocation, connectionStatus, arrivalPing, latestNotification };
 };

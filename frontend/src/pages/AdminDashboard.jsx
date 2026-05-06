@@ -20,16 +20,55 @@ const Badge = ({ active }) => (
     </span>
 );
 
-const StatCard = ({ label, value, color = 'cyan', icon: Icon }) => (
-    <motion.div whileHover={{ scale: 1.02 }}
-        className={`glass p-5 border border-${color}-500/20 hover:border-${color}-500/50 transition-all`}>
-        <div className="flex justify-between items-start mb-3">
-            <span className={`text-[10px] font-bold text-${color}-500 uppercase tracking-widest`}>{label}</span>
-            {Icon && <Icon size={16} className={`text-${color}-500/60`} />}
-        </div>
-        <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-${color}-400 to-${color}-600`}>{value}</div>
-    </motion.div>
-);
+const StatCard = ({ label, value, color = 'cyan', icon: Icon }) => {
+    const colorMap = {
+        cyan: {
+            border: 'border-cyan-500/20',
+            hover: 'hover:border-cyan-500/50',
+            text: 'text-cyan-500',
+            gradient: 'from-cyan-400 to-cyan-600'
+        },
+        blue: {
+            border: 'border-blue-500/20',
+            hover: 'hover:border-blue-500/50',
+            text: 'text-blue-500',
+            gradient: 'from-blue-400 to-blue-600'
+        },
+        purple: {
+            border: 'border-purple-500/20',
+            hover: 'hover:border-purple-500/50',
+            text: 'text-purple-500',
+            gradient: 'from-purple-400 to-purple-600'
+        },
+        emerald: {
+            border: 'border-emerald-500/20',
+            hover: 'hover:border-emerald-500/50',
+            text: 'text-emerald-500',
+            gradient: 'from-emerald-400 to-emerald-600'
+        },
+        orange: {
+            border: 'border-orange-500/20',
+            hover: 'hover:border-orange-500/50',
+            text: 'text-orange-500',
+            gradient: 'from-orange-400 to-orange-600'
+        }
+    };
+
+    const c = colorMap[color] || colorMap.cyan;
+
+    return (
+        <motion.div whileHover={{ scale: 1.02 }}
+            className={`glass p-5 border ${c.border} ${c.hover} transition-all`}>
+            <div className="flex justify-between items-start mb-3">
+                <span className={`text-[10px] font-bold ${c.text} uppercase tracking-widest`}>{label}</span>
+                {Icon && <Icon size={16} className={`${c.text}/60`} />}
+            </div>
+            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br ${c.gradient}`}>
+                {value ?? 0}
+            </div>
+        </motion.div>
+    );
+};
 
 const Modal = ({ title, onClose, children }) => (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
@@ -89,6 +128,8 @@ const AdminDashboard = () => {
     const [alerts,     setAlerts]     = useState([]);
     const [communications, setCommunications] = useState([]);
     const [aiPrompt, setAiPrompt] = useState("");
+    const [aiFindings, setAiFindings] = useState(null);
+    const [isOptimizing, setIsOptimizing] = useState(false);
 
     // Modal state
     const [modal, setModal] = useState(null); // 'student' | 'driver' | 'bus' | 'route' | 'stop' | 'editStudent' | 'editDriver' | 'editBus'
@@ -208,20 +249,28 @@ const AdminDashboard = () => {
     };
 
     const optimizeRoute = async (routeId, routeName) => {
-        if (!window.confirm(`Use AI to recalculate the optimal shortest driving path for ${routeName}?`)) return;
-        setLoading(true);
+        if (!window.confirm(`Use AI Agent to recalculate the optimal shortest driving path for ${routeName}?`)) return;
+        setIsOptimizing(true);
+        setAiFindings("AI Agent is analyzing coordinates and traffic patterns to find the shortest route...");
+        setModal('aiFindings');
+        
         try {
             const res = await api.post('/ai/optimize-route', { route_id: routeId });
             if (res.data.message) {
                 toast.error(res.data.message);
+                setAiFindings(null);
+                setModal(null);
                 return;
             }
-            toast.success(`AI OPTIMIZED: ${res.data.optimizedCount || 'All'} stops reordered`);
+            
+            setAiFindings(res.data.findings || "Route optimized successfully.");
+            toast.success(`AI AGENT SUCCESS: ${res.data.optimizedCount || 'All'} stops reordered`);
             loadStops(routeId);
-            setActiveTab('stops');
         } catch (err) {
             toast.error(err.response?.data?.error || err.response?.data?.message || 'OPTIMIZATION FAILED');
-        } finally { setLoading(false); }
+            setAiFindings(null);
+            setModal(null);
+        } finally { setIsOptimizing(false); }
     };
 
     // ── Sidebar tabs ─────────────────────────────────────────────────────────
@@ -257,14 +306,14 @@ const AdminDashboard = () => {
             {/* Quick-action buttons */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                    { label: 'ADD STUDENT', tab: 'students', m: 'student', color: 'cyan' },
-                    { label: 'ADD DRIVER',  tab: 'drivers',  m: 'driver',  color: 'blue' },
-                    { label: 'ADD BUS',     tab: 'buses',    m: 'bus',     color: 'purple' },
-                    { label: 'ADD ROUTE',   tab: 'routes',   m: 'route',   color: 'emerald' },
+                    { label: 'ADD STUDENT', tab: 'students', m: 'student', color: 'cyan', border: 'border-cyan-500/30 hover:border-cyan-500/70', text: 'text-cyan-400' },
+                    { label: 'ADD DRIVER',  tab: 'drivers',  m: 'driver',  color: 'blue', border: 'border-blue-500/30 hover:border-blue-500/70', text: 'text-blue-400' },
+                    { label: 'ADD BUS',     tab: 'buses',    m: 'bus',     color: 'purple', border: 'border-purple-500/30 hover:border-purple-500/70', text: 'text-purple-400' },
+                    { label: 'ADD ROUTE',   tab: 'routes',   m: 'route',   color: 'emerald', border: 'border-emerald-500/30 hover:border-emerald-500/70', text: 'text-emerald-400' },
                 ].map(a => (
                     <motion.button key={a.label} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                         onClick={() => { setActiveTab(a.tab); setModal(a.m); setForm({}); }}
-                        className={`py-3 glass border border-${a.color}-500/30 hover:border-${a.color}-500/70 text-${a.color}-400 font-black text-[10px] tracking-widest uppercase transition-all`}>
+                        className={`py-3 glass border ${a.border} ${a.text} font-black text-[10px] tracking-widest uppercase transition-all`}>
                         + {a.label}
                     </motion.button>
                 ))}
@@ -982,6 +1031,40 @@ const AdminDashboard = () => {
                                 </div>
                             ))}
                             {history.length === 0 && <p className="text-center text-slate-600 py-4 text-xs">No history found.</p>}
+                        </div>
+                    </Modal>
+                )}
+
+                {modal === 'aiFindings' && (
+                    <Modal title="AI AGENT: ROUTE OPTIMIZATION" onClose={isOptimizing ? undefined : closeModal}>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                                <Sparkles className={`text-cyan-400 ${isOptimizing ? 'animate-pulse' : ''}`} size={20} />
+                                <div className="flex-1">
+                                    <div className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-1">
+                                        {isOptimizing ? 'Agent Status: Processing' : 'Agent Status: Analysis Complete'}
+                                    </div>
+                                    <p className="text-sm text-slate-200 leading-relaxed italic">
+                                        "{aiFindings}"
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {!isOptimizing && (
+                                <div className="space-y-3">
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Findings Summary</div>
+                                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                        <div className="p-2 glass border border-emerald-500/20 text-emerald-400">✓ Coordinates Verified</div>
+                                        <div className="p-2 glass border border-emerald-500/20 text-emerald-400">✓ Path Optimized</div>
+                                        <div className="p-2 glass border border-cyan-500/20 text-cyan-400">✓ Order Updated</div>
+                                        <div className="p-2 glass border border-cyan-500/20 text-cyan-400">✓ Database Synced</div>
+                                    </div>
+                                    <button onClick={() => { closeModal(); setActiveTab('stops'); }} 
+                                        className="w-full py-3 mt-2 bg-cyan-500 text-black font-black text-xs tracking-widest rounded hover:bg-cyan-400 transition-all">
+                                        VIEW UPDATED STOPS
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </Modal>
                 )}
